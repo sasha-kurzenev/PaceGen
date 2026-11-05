@@ -1,0 +1,217 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PaceGen — живой рок</title>
+  <style>
+    :root { color-scheme: dark; font: 17px/1.45 system-ui, sans-serif; background: #0a0e13; color: #edf4ef; }
+    body { max-width: 540px; margin: auto; padding: 28px 22px; }
+    h1 { font-size: 30px; line-height: 1.12; }
+    p, small { color: #aab9b3; }
+    .buttons { display: flex; gap: 12px; margin: 24px 0; }
+    button { border: 0; border-radius: 16px; padding: 16px; font: inherit; font-weight: 700; background: #bdfa68; color: #11180c; flex: 1; }
+    button:disabled { opacity: .5; }
+    .card { background: #18221d; border: 1px solid #314137; border-radius: 18px; padding: 18px; margin: 20px 0; }
+    label { display: flex; justify-content: space-between; }
+    input { width: 100%; accent-color: #bdfa68; margin: 16px 0; }
+    .metric { display: flex; justify-content: space-between; gap: 12px; padding: 5px 0; }
+    .metric span { color: #aab9b3; }
+    #status { color: #bdfa68; min-height: 1.5em; }
+  </style>
+</head>
+<body>
+  <h1>Живой рок-фрагмент</h1>
+  <p>Музыка строится на телефоне из нот и коротких сэмплов. После загрузки страницы можно отключить сеть. Следующая композиция начинается без паузы после 32 тактов.</p>
+  <div class="card">
+    <label for="bpm">Темп <strong><span id="bpmValue">120</span> BPM</strong></label>
+    <input id="bpm" type="range" min="100" max="150" value="120">
+    <small>Смена темпа запускает фрагмент с начала.</small>
+  </div>
+  <div class="buttons"><button id="play">▶ Играть</button><button id="next">⏭ Другая</button></div>
+  <p id="status" role="status">Готово</p>
+  <div class="card">
+    <div class="metric"><span>Seed</span><strong id="seed">20261105</strong></div>
+    <div class="metric"><span>Такт</span><strong id="bar">—</strong></div>
+    <div class="metric"><span>Сэмплы</span><strong id="samples">—</strong></div>
+    <div class="metric"><span>Декодирование</span><strong id="decode">—</strong></div>
+    <div class="metric"><span>Опоздавшие события</span><strong id="late">0</strong></div>
+    <div class="metric"><span>Макс. задержка таймера</span><strong id="jitter">0 мс</strong></div>
+  </div>
+  <small>Это проверка планировщика при открытом экране. Она не измеряет CPU, память, батарею и воспроизведение при выключенном экране.</small>
+  <script type="module">
+    import { generateRockFragment } from '/js/generate.js';
+
+    const $ = id => document.getElementById(id);
+    const bpmInput = $('bpm');
+    const set = (id, value) => { $(id).textContent = String(value); };
+    let seed = 20261105, context, bank, master, rhythmBus, leadBus, bassBus, drumBus;
+    let playing = false, timer, fragment, origin = 0, index = 0, late = 0, jitter = 0, lastTick = 0, ticks = 0;
+    const active = new Set();
+
+    function makeDrive(amount) {
+      const node = context.createWaveShaper();
+      const curve = new Float32Array(2048);
+      for (let i = 0; i < curve.length; i++) curve[i] = Math.tanh(amount * (2 * i / 2047 - 1)) / Math.tanh(amount);
+      node.curve = curve; node.oversample = '2x';
+      return node;
+    }
+
+    function createGraph() {
+      context = new (window.AudioContext || window.webkitAudioContext)();
+      const compressor = context.createDynamicsCompressor();
+      compressor.threshold.value = -14; compressor.ratio.value = 3;
+      master = context.createGain(); master.gain.value = 0.55;
+      compressor.connect(master); master.connect(context.destination);
+
+      rhythmBus = context.createGain(); rhythmBus.gain.value = 0.45;
+      const rhythmDrive = makeDrive(3.2);
+      const rhythmLow = context.createBiquadFilter(); rhythmLow.type = 'lowpass'; rhythmLow.frequency.value = 5200;
+      const rhythmHigh = context.createBiquadFilter(); rhythmHigh.type = 'highpass'; rhythmHigh.frequency.value = 75;
+      rhythmBus.connect(rhythmDrive); rhythmDrive.connect(rhythmHigh); rhythmHigh.connect(rhythmLow); rhythmLow.connect(compressor);
+
+      leadBus = context.createGain(); leadBus.gain.value = 0.5;
+      const leadDrive = makeDrive(1.8);
+      const leadLow = context.createBiquadFilter(); leadLow.type = 'lowpass'; leadLow.frequency.value = 6500;
+      leadBus.connect(leadDrive); leadDrive.connect(leadLow); leadLow.connect(compressor);
+      const echo = context.createDelay(0.25); echo.delayTime.value = 0.21;
+      const echoGain = context.createGain(); echoGain.gain.value = 0.12;
+      leadLow.connect(echo); echo.connect(echoGain); echoGain.connect(compressor);
+
+      bassBus = context.createGain(); bassBus.gain.value = 0.5;
+      const bassLow = context.createBiquadFilter(); bassLow.type = 'lowpass'; bassLow.frequency.value = 700;
+      bassBus.connect(bassLow); bassLow.connect(compressor);
+      drumBus = context.createGain(); drumBus.gain.value = 0.55; drumBus.connect(compressor);
+    }
+
+    async function prepare() {
+      if (!context) createGraph();
+      await context.resume();
+      if (bank) return;
+      const manifest = await (await fetch('/bank.json')).json();
+      const started = performance.now();
+      const load = async url => {
+        const response = await fetch(url);
+        if (!response.ok) throw new Error(`${url}: HTTP ${response.status}`);
+        try { return await context.decodeAudioData(await response.arrayBuffer()); }
+        catch (error) { throw new Error(`${url}: ${error.message}`); }
+      };
+      const regions = await Promise.all(manifest.regions.map(async region => ({ ...region, buffer: await load(region.url) })));
+      const drums = Object.fromEntries(await Promise.all(Object.entries(manifest.drums)
+        .map(async ([name, url]) => [name, await load(url)])));
+      bank = { regions, drums };
+      set('samples', regions.length + Object.keys(drums).length);
+      set('decode', `${Math.round(performance.now() - started)} мс`);
+    }
+
+    function track(source) {
+      active.add(source);
+      source.onended = () => active.delete(source);
+    }
+
+    function scheduleGuitar(event, when, seconds) {
+      const region = bank.regions.find(item => item.low <= event.pitchMidi && event.pitchMidi <= item.high);
+      if (!region) throw new Error(`Нет гитарного сэмпла для MIDI ${event.pitchMidi}`);
+      const source = context.createBufferSource(); source.buffer = region.buffer;
+      source.playbackRate.value = 2 ** ((event.pitchMidi - region.center) / 12);
+      const gain = context.createGain();
+      const pan = context.createStereoPanner();
+      pan.pan.value = event.instrument === 'leadGuitar' ? 0.06 : event.string === 6 ? -0.3 : 0.3;
+      source.connect(gain); gain.connect(pan); pan.connect(event.instrument === 'leadGuitar' ? leadBus : rhythmBus);
+      const available = region.buffer.duration / source.playbackRate.value - 0.01;
+      const length = Math.max(0.04, Math.min(seconds, available));
+      gain.gain.setValueAtTime(0, when);
+      gain.gain.linearRampToValueAtTime(event.velocity / 127, when + 0.004);
+      gain.gain.setValueAtTime(event.velocity / 127, when + Math.max(0.005, length - 0.04));
+      gain.gain.linearRampToValueAtTime(0, when + length);
+      source.start(when); source.stop(when + length); track(source);
+    }
+
+    function scheduleBass(event, when, seconds) {
+      const source = context.createOscillator(); source.type = 'triangle';
+      source.frequency.value = 440 * 2 ** ((event.pitchMidi - 69) / 12);
+      const gain = context.createGain(); source.connect(gain); gain.connect(bassBus);
+      gain.gain.setValueAtTime(0, when);
+      gain.gain.linearRampToValueAtTime(event.velocity / 127 * 0.75, when + 0.008);
+      gain.gain.setValueAtTime(event.velocity / 127 * 0.75, when + Math.max(0.01, seconds - 0.09));
+      gain.gain.linearRampToValueAtTime(0, when + seconds);
+      source.start(when); source.stop(when + seconds); track(source);
+    }
+
+    function scheduleDrum(event, when) {
+      const source = context.createBufferSource(); source.buffer = bank.drums[event.instrument];
+      const gain = context.createGain(); gain.gain.value = event.velocity / 127;
+      source.connect(gain); gain.connect(drumBus);
+      source.start(when); track(source);
+    }
+
+    function schedule() {
+      if (!playing) return;
+      const now = performance.now();
+      jitter = Math.max(jitter, Math.max(0, now - lastTick - 25));
+      lastTick = now;
+      const horizon = context.currentTime + 0.16;
+      while (true) {
+        const secondsPerTick = 60 / (+bpmInput.value * 480);
+        while (index < fragment.events.length) {
+          const event = fragment.events[index];
+          const intended = origin + event.startTick * secondsPerTick;
+          if (intended > horizon) break;
+          const when = Math.max(context.currentTime + 0.005, intended);
+          if (intended < context.currentTime + 0.01) late++;
+          if (event.kind === 'drum') scheduleDrum(event, when);
+          else if (event.instrument === 'bass') scheduleBass(event, when, event.durationTicks * secondsPerTick);
+          else scheduleGuitar(event, when, event.durationTicks * secondsPerTick);
+          index++;
+        }
+        const end = origin + fragment.barCount * 1920 * secondsPerTick;
+        if (index < fragment.events.length || end > horizon) break;
+        origin = end; seed = (seed + 1) >>> 0;
+        fragment = generateRockFragment(seed, +bpmInput.value);
+        index = 0;
+      }
+      if (++ticks % 20 === 0) {
+        if (context.currentTime >= origin) set('seed', seed);
+        set('bar', `${Math.max(1, Math.min(32, Math.floor((context.currentTime - origin) / (4 * 60 / +bpmInput.value)) + 1))} / 32`);
+        set('late', late); set('jitter', `${Math.round(jitter)} мс`);
+      }
+    }
+
+    function stop() {
+      playing = false; clearInterval(timer); timer = undefined;
+      for (const source of active) { try { source.stop(); } catch {} }
+      active.clear();
+      $('play').textContent = '▶ Играть';
+      set('status', 'Остановлено');
+    }
+
+    async function start() {
+      $('play').disabled = true; $('next').disabled = true;
+      try {
+        await prepare();
+        stop();
+        fragment = generateRockFragment(seed, +bpmInput.value);
+        origin = context.currentTime + 0.14; index = 0;
+        late = 0; jitter = 0; ticks = 0; lastTick = performance.now();
+        playing = true; set('seed', seed); set('bar', '1 / 32');
+        set('late', 0); set('jitter', '0 мс'); set('status', 'Играет');
+        $('play').textContent = '■ Стоп';
+        timer = setInterval(schedule, 25); schedule();
+      } catch (error) {
+        stop(); set('status', `Ошибка: ${error.message}`);
+      } finally {
+        $('play').disabled = false; $('next').disabled = false;
+      }
+    }
+
+    $('play').onclick = () => playing ? stop() : start();
+    $('next').onclick = () => { seed = (seed + 1) >>> 0; set('seed', seed); if (playing) start(); };
+    bpmInput.oninput = () => set('bpmValue', bpmInput.value);
+    bpmInput.onchange = () => { if (playing) start(); };
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden && playing) set('status', 'Экран скрыт: браузер может приостановить звук');
+      else if (playing) set('status', 'Играет');
+    });
+  </script>
+</body>
+</html>

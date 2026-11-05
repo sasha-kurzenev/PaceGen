@@ -1,15 +1,17 @@
 {
   "expo": {
     "name": "PaceGen",
-    "slug": "PaceGen",
+    "slug": "pacegen",
+    "scheme": "pacegen",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "dark",
     "ios": {
       "supportsTablet": true
     },
     "android": {
+      "package": "com.pacegen.app",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/android-icon-foreground.png",
@@ -20,6 +22,16 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "606fb6ac-10e4-4b23-bd93-60e2fdcd01a6"
+      }
+    },
+    "owner": "sasha.kurzenev",
+    "plugins": [
+      "expo-router",
+      "expo-font"
+    ]
   }
 }

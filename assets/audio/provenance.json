@@ -1,0 +1,152 @@
+{
+  "commit": "22d222ce36e290ba3792c776811aa9c69dcc8776",
+  "license": "CC0-1.0",
+  "samples": [
+    {
+      "name": "kickDance",
+      "id": "house.kick.punch-03",
+      "url": "https://raw.githubusercontent.com/octalmusic/octal-samples/22d222ce36e290ba3792c776811aa9c69dcc8776/samples/kicks/punch-03.wav",
+      "sha256": "bd8ffe390f82422ba43549d40e0bb71bba5bf352f8be10d19f3c5cb57f6301fd",
+      "bytes": 38852,
+      "path": "samples/kicks/punch-03.wav",
+      "type": "kick",
+      "root_note": "A1",
+      "character_tags": [
+        "punchy",
+        "bright"
+      ],
+      "length": 0.44,
+      "license_source": "own synthesis — deterministic 808/909-style voice rendered by scripts/generate-kit.ts; no external source material; dedicated CC0-1.0 (processing chain in LICENSES.md)"
+    },
+    {
+      "name": "kickHouse",
+      "id": "house.kick.sub-03",
+      "url": "https://raw.githubusercontent.com/octalmusic/octal-samples/22d222ce36e290ba3792c776811aa9c69dcc8776/samples/kicks/sub-03.wav",
+      "sha256": "44f25bfffb0fd8f2a18f752aa652e26a91c793aa54a41a0a5223a8c9f894c145",
+      "bytes": 49436,
+      "path": "samples/kicks/sub-03.wav",
+      "type": "kick",
+      "root_note": "A1",
+      "character_tags": [
+        "deep",
+        "round",
+        "soft"
+      ],
+      "length": 0.56,
+      "license_source": "own synthesis — deterministic 808/909-style voice rendered by scripts/generate-kit.ts; no external source material; dedicated CC0-1.0 (processing chain in LICENSES.md)"
+    },
+    {
+      "name": "kickTechno",
+      "id": "house.kick.punch-01",
+      "url": "https://raw.githubusercontent.com/octalmusic/octal-samples/22d222ce36e290ba3792c776811aa9c69dcc8776/samples/kicks/punch-01.wav",
+      "sha256": "0ebcd88db2682917bf9e1593900818ad8d21c3ea447948efe0c990d143f385ea",
+      "bytes": 40616,
+      "path": "samples/kicks/punch-01.wav",
+      "type": "kick",
+      "root_note": "F1",
+      "character_tags": [
+        "punchy",
+        "solid",
+        "driving"
+      ],
+      "length": 0.46,
+      "license_source": "own synthesis — deterministic 808/909-style voice rendered by scripts/generate-kit.ts; no external source material; dedicated CC0-1.0 (processing chain in LICENSES.md)"
+    },
+    {
+      "name": "clap",
+      "id": "house.clap.classic-02",
+      "url": "https://raw.githubusercontent.com/octalmusic/octal-samples/22d222ce36e290ba3792c776811aa9c69dcc8776/samples/claps/classic-02.wav",
+      "sha256": "53d98144934f6b90f16f2bcfd00bef82522c392d6c7f23c86a5f1488cb9cddcd",
+      "bytes": 30032,
+      "path": "samples/claps/classic-02.wav",
+      "type": "clap",
+      "root_note": null,
+      "character_tags": [
+        "wide",
+        "roomy"
+      ],
+      "length": 0.34,
+      "license_source": "own synthesis — deterministic 808/909-style voice rendered by scripts/generate-kit.ts; no external source material; dedicated CC0-1.0 (processing chain in LICENSES.md)"
+    },
+    {
+      "name": "snare",
+      "id": "house.snare.body-01",
+      "url": "https://raw.githubusercontent.com/octalmusic/octal-samples/22d222ce36e290ba3792c776811aa9c69dcc8776/samples/snares/body-01.wav",
+      "sha256": "96b1d1a6a93a59fb34500f3cc2f5c745be863cad317279ec3b0ba85ffc1009ac",
+      "bytes": 30032,
+      "path": "samples/snares/body-01.wav",
+      "type": "snare",
+      "root_note": null,
+      "character_tags": [
+        "full",
+        "warm"
+      ],
+      "length": 0.34,
+      "license_source": "own synthesis — deterministic 808/909-style voice rendered by scripts/generate-kit.ts; no external source material; dedicated CC0-1.0 (processing chain in LICENSES.md)"
+    },
+    {
+      "name": "closedHat",
+      "id": "house.hat.closed-01",
+      "url": "https://raw.githubusercontent.com/octalmusic/octal-samples/22d222ce36e290ba3792c776811aa9c69dcc8776/samples/hats/closed-01.wav",
+      "sha256": "eceb021f51c8461f1bb1e5e3ce65492601470e4b495fdc9e54cd1b3be426c404",
+      "bytes": 8864,
+      "path": "samples/hats/closed-01.wav",
+      "type": "hat_closed",
+      "root_note": null,
+      "character_tags": [
+        "tight",
+        "crisp"
+      ],
+      "length": 0.1,
+      "license_source": "own synthesis — deterministic 808/909-style voice rendered by scripts/generate-kit.ts; no external source material; dedicated CC0-1.0 (processing chain in LICENSES.md)"
+    },
+    {
+      "name": "softHat",
+      "id": "house.hat.closed-09",
+      "url": "https://raw.githubusercontent.com/octalmusic/octal-samples/22d222ce36e290ba3792c776811aa9c69dcc8776/samples/hats/closed-09.wav",
+      "sha256": "4c70d3f6197b40559d17c29503de8f90ebecc2bc0f6837c100eb5982dc4f50ce",
+      "bytes": 11510,
+      "path": "samples/hats/closed-09.wav",
+      "type": "hat_closed",
+      "root_note": null,
+      "character_tags": [
+        "airy",
+        "soft"
+      ],
+      "length": 0.13,
+      "license_source": "own synthesis — deterministic 808/909-style voice rendered by scripts/generate-kit.ts; no external source material; dedicated CC0-1.0 (processing chain in LICENSES.md)"
+    },
+    {
+      "name": "openHat",
+      "id": "house.hat.open-01",
+      "url": "https://raw.githubusercontent.com/octalmusic/octal-samples/22d222ce36e290ba3792c776811aa9c69dcc8776/samples/hats/open-01.wav",
+      "sha256": "d8e3babf28bcb75f9c2785fcfc9ad3928c9dca55d6a026b66ae8f856cecd240f",
+      "bytes": 33560,
+      "path": "samples/hats/open-01.wav",
+      "type": "hat_open",
+      "root_note": null,
+      "character_tags": [
+        "washy",
+        "open"
+      ],
+      "length": 0.38,
+      "license_source": "own synthesis — deterministic 808/909-style voice rendered by scripts/generate-kit.ts; no external source material; dedicated CC0-1.0 (processing chain in LICENSES.md)"
+    },
+    {
+      "name": "shaker",
+      "id": "house.perc.shaker-01",
+      "url": "https://raw.githubusercontent.com/octalmusic/octal-samples/22d222ce36e290ba3792c776811aa9c69dcc8776/samples/percs/shaker-01.wav",
+      "sha256": "787009ee8360066f6b04a191a78f5fa95de7a2c569d331eacc540c8bda810ce9",
+      "bytes": 14156,
+      "path": "samples/percs/shaker-01.wav",
+      "type": "perc",
+      "root_note": null,
+      "character_tags": [
+        "loose",
+        "airy"
+      ],
+      "length": 0.16,
+      "license_source": "own synthesis — deterministic 808/909-style voice rendered by scripts/generate-kit.ts; no external source material; dedicated CC0-1.0 (processing chain in LICENSES.md)"
+    }
+  ]
+}

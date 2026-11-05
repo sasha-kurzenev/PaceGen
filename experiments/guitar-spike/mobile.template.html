@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PaceGen · проверка гитары</title>
+  <style>
+    :root { color-scheme: dark; font-family: system-ui, sans-serif; background: #0b1015; color: #f2f6ee; }
+    body { max-width: 540px; margin: auto; padding: 24px; }
+    h1 { font-size: 29px; line-height: 1.12; margin: 36px 0 12px; }
+    p { color: #a3afa8; line-height: 1.5; }
+    button { border: 0; border-radius: 16px; background: #bdfa68; color: #10170b; font-size: 19px; font-weight: 700; padding: 18px 28px; width: 100%; margin: 18px 0; }
+    button:disabled { opacity: .5; }
+    .card { background: #172119; border: 1px solid #30402a; border-radius: 18px; padding: 20px; margin: 18px 0; }
+    .metric { display: flex; justify-content: space-between; padding: 7px 0; gap: 20px; }
+    .metric span:first-child { color: #a3afa8; }
+    .metric strong { text-align: right; }
+    #status { color: #bdfa68; min-height: 1.6em; }
+    .small { font-size: 13px; }
+  </style>
+</head>
+<body>
+  <h1>Проверка гитарного звука</h1>
+  <p>Тот же четырёхтактовый рифф, который прозвучал в варианте A. Страница содержит короткие сэмплы внутри файла и после открытия работает без сети.</p>
+  <button id="transport">Загрузить и играть</button>
+  <p id="status" role="status">Готово к запуску</p>
+  <div class="card">
+    <div class="metric"><span>Темп</span><strong>120 BPM</strong></div>
+    <div class="metric"><span>Сэмплы</span><strong id="samples">—</strong></div>
+    <div class="metric"><span>Декодирование</span><strong id="decode">—</strong></div>
+    <div class="metric"><span>Опоздавшие ноты</span><strong id="late">0</strong></div>
+    <div class="metric"><span>Макс. задержка планировщика</span><strong id="jitter">0 мс</strong></div>
+    <div class="metric"><span>Повторения риффа</span><strong id="loops">0</strong></div>
+  </div>
+  <p class="small">Проверка опозданий показывает, успевает ли браузер планировать звук. Она не измеряет процессор, память и расход батареи. Для таких измерений понадобится Android-профилирование. При выключении экрана эта пробная страница может остановиться.</p>
+  <script>
+    const regions = __REGIONS_JSON__;
+    const riff = __EVENTS_JSON__;
+    const button = document.getElementById('transport');
+    const status = document.getElementById('status');
+    const setMetric = (id, text) => { document.getElementById(id).textContent = String(text); };
+    const loopSeconds = 8;
+    let context, decoded, timer, updateTimer, playing = false, generation = 0;
+    let loop = 0, index = 0, loopStart = 0, late = 0, maxJitter = 0, lastTick = 0;
+    const sources = new Set();
+
+    async function prepare() {
+      if (!context) {
+        context = new (window.AudioContext || window.webkitAudioContext)();
+        const drive = context.createWaveShaper();
+        const curve = new Float32Array(2048);
+        for (let i = 0; i < curve.length; i++) curve[i] = Math.tanh(3 * (i / 1023.5 - 1)) / Math.tanh(3);
+        drive.curve = curve;
+        drive.oversample = '2x';
+        const highpass = context.createBiquadFilter(); highpass.type = 'highpass'; highpass.frequency.value = 75;
+        const presence = context.createBiquadFilter(); presence.type = 'peaking'; presence.frequency.value = 2400; presence.Q.value = 1; presence.gain.value = 2.5;
+        const cabinet = context.createBiquadFilter(); cabinet.type = 'lowpass'; cabinet.frequency.value = 5100; cabinet.Q.value = 0.7;
+        const compressor = context.createDynamicsCompressor(); compressor.threshold.value = -12; compressor.ratio.value = 2.5;
+        const master = context.createGain(); master.gain.value = 0.32;
+        drive.connect(highpass); highpass.connect(presence); presence.connect(cabinet);
+        const dry = context.createGain(); dry.gain.value = 0.88; cabinet.connect(dry); dry.connect(compressor);
+        const chorusDelay = context.createDelay(0.02); chorusDelay.delayTime.value = 0.007;
+        const chorusLfo = context.createOscillator(); chorusLfo.frequency.value = 0.7;
+        const chorusDepth = context.createGain(); chorusDepth.gain.value = 0.002;
+        chorusLfo.connect(chorusDepth); chorusDepth.connect(chorusDelay.delayTime); chorusLfo.start();
+        const chorusWet = context.createGain(); chorusWet.gain.value = 0.12;
+        cabinet.connect(chorusDelay); chorusDelay.connect(chorusWet); chorusWet.connect(compressor);
+        const echo = context.createDelay(0.25); echo.delayTime.value = 0.185;
+        const echoWet = context.createGain(); echoWet.gain.value = 0.11;
+        cabinet.connect(echo); echo.connect(echoWet); echoWet.connect(compressor);
+        const reverb = context.createConvolver();
+        const impulse = context.createBuffer(2, Math.ceil(context.sampleRate * 0.19), context.sampleRate);
+        let seed = 123456;
+        for (let channel = 0; channel < 2; channel++) {
+          const data = impulse.getChannelData(channel);
+          for (let i = 0; i < data.length; i++) {
+            seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
+            data[i] = (seed / 0xffffffff * 2 - 1) * Math.exp(-i / (context.sampleRate * 0.035));
+          }
+        }
+        reverb.buffer = impulse;
+        const reverbWet = context.createGain(); reverbWet.gain.value = 0.07;
+        cabinet.connect(reverb); reverb.connect(reverbWet); reverbWet.connect(compressor);
+        compressor.connect(master); master.connect(context.destination);
+        context.guitarInput = drive;
+      }
+      await context.resume();
+      if (!decoded) {
+        const started = performance.now();
+        decoded = await Promise.all(regions.map(async region => {
+          const binary = atob(region.wav);
+          const bytes = Uint8Array.from(binary, char => char.charCodeAt(0));
+          return { ...region, buffer: await context.decodeAudioData(bytes.buffer) };
+        }));
+        setMetric('samples', decoded.length);
+        setMetric('decode', `${Math.round(performance.now() - started)} мс`);
+      }
+    }
+
+    function playNote(event, when) {
+      const region = decoded.find(item => item.low <= event.note && event.note <= item.high);
+      if (!region) { status.textContent = `Нет сэмпла для ноты ${event.note}`; stop(); return; }
+      const source = context.createBufferSource();
+      const gain = context.createGain();
+      const pan = context.createStereoPanner();
+      source.buffer = region.buffer;
+      source.playbackRate.value = 2 ** ((event.note - region.center) / 12);
+      pan.pan.value = event.string ? 0.12 : -0.12;
+      const level = event.velocity / 100 * 0.42;
+      const start = Math.max(when, context.currentTime + 0.002);
+      gain.gain.setValueAtTime(0, start);
+      gain.gain.linearRampToValueAtTime(level, start + 0.003);
+      gain.gain.setValueAtTime(level, start + Math.max(0.004, event.duration - 0.045));
+      gain.gain.linearRampToValueAtTime(0, start + event.duration);
+      source.connect(gain); gain.connect(pan); pan.connect(context.guitarInput);
+      source.onended = () => { sources.delete(source); source.disconnect(); gain.disconnect(); pan.disconnect(); };
+      sources.add(source);
+      source.start(start);
+      source.stop(start + event.duration + 0.01);
+    }
+
+    function schedule() {
+      if (!playing) return;
+      const now = context.currentTime;
+      const jitter = Math.max(0, performance.now() - lastTick - 25);
+      maxJitter = Math.max(maxJitter, jitter);
+      lastTick = performance.now();
+      while (loopStart + riff[index].start < now + 0.18) {
+        const when = loopStart + riff[index].start;
+        if (when < now + 0.005) late++;
+        playNote(riff[index], when);
+        index++;
+        if (index === riff.length) { index = 0; loop++; loopStart += loopSeconds; }
+      }
+    }
+
+    function stop() {
+      generation++;
+      playing = false;
+      clearInterval(timer); clearInterval(updateTimer);
+      sources.forEach(source => { try { source.stop(); } catch {} });
+      sources.clear();
+      button.disabled = false;
+      button.textContent = 'Играть ещё раз';
+      status.textContent = 'Остановлено';
+      if (context) context.suspend();
+    }
+
+    button.addEventListener('click', async () => {
+      if (playing) { stop(); return; }
+      const token = ++generation;
+      button.disabled = true;
+      status.textContent = 'Декодируем сэмплы…';
+      try {
+        await prepare();
+        if (token !== generation) return;
+        loop = 0; index = 0; late = 0; maxJitter = 0;
+        loopStart = context.currentTime + 0.1;
+        lastTick = performance.now();
+        playing = true;
+        schedule();
+        timer = setInterval(schedule, 25);
+        updateTimer = setInterval(() => {
+          setMetric('late', late);
+          setMetric('jitter', `${Math.round(maxJitter)} мс`);
+          setMetric('loops', loop);
+        }, 500);
+        button.disabled = false;
+        button.textContent = 'Остановить';
+        status.textContent = 'Играет';
+      } catch (error) {
+        stop();
+        status.textContent = `Ошибка звука: ${error}`;
+      }
+    });
+    document.addEventListener('visibilitychange', () => { if (document.hidden && playing) stop(); });
+  </script>
+</body>
+</html>

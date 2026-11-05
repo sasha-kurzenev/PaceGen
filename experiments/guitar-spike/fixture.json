@@ -1,0 +1,37 @@
+{
+  "version": 1,
+  "bpm": 120,
+  "meter": [4, 4],
+  "tuningMidi": [40, 45, 50, 55, 59, 64],
+  "purpose": "Один оригинальный ритм для слепого сравнения источников гитарного звука",
+  "bars": [
+    {
+      "chord": "A5",
+      "notesMidi": [45, 52],
+      "fingering": [{ "string": 5, "fret": 0 }, { "string": 4, "fret": 2 }],
+      "attacksBeats": [0, 0.5, 1, 1.5, 2, 2.5, 3, 3.5],
+      "articulations": ["open", "palmMute", "palmMute", "palmMute", "open", "palmMute", "open", "palmMute"]
+    },
+    {
+      "chord": "F5",
+      "notesMidi": [41, 48],
+      "fingering": [{ "string": 6, "fret": 1 }, { "string": 5, "fret": 3 }],
+      "attacksBeats": [0, 0.5, 1, 1.5, 2, 2.5, 3, 3.5],
+      "articulations": ["open", "palmMute", "palmMute", "palmMute", "open", "palmMute", "open", "palmMute"]
+    },
+    {
+      "chord": "C5",
+      "notesMidi": [48, 55],
+      "fingering": [{ "string": 5, "fret": 3 }, { "string": 4, "fret": 5 }],
+      "attacksBeats": [0, 0.5, 1, 1.5, 2, 2.5, 3, 3.5],
+      "articulations": ["open", "palmMute", "palmMute", "palmMute", "open", "palmMute", "open", "palmMute"]
+    },
+    {
+      "chord": "G5",
+      "notesMidi": [43, 50],
+      "fingering": [{ "string": 6, "fret": 3 }, { "string": 5, "fret": 5 }],
+      "attacksBeats": [0, 0.5, 1, 1.5, 2, 2.5, 3, 3.5],
+      "articulations": ["open", "palmMute", "palmMute", "palmMute", "open", "palmMute", "open", "palmMute"]
+    }
+  ]
+}
